@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stream Ending Credits</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: rgba(0, 0, 0, 0.85);
+      color: #ffffff;
+      font-family: 'Segoe UI', Montserrat, Arial, sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      justify-content: center;
+    }
+
+    #credits-container {
+      position: absolute;
+      bottom: -100%;
+      width: 800px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 48px;
+      animation: rollUp 35s linear infinite;
+    }
+
+    @keyframes rollUp {
+      0% {
+        transform: translateY(100vh);
+      }
+      100% {
+        transform: translateY(-100%);
+      }
+    }
+
+    .main-title {
+      font-size: 52px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: #25f4ee;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      color: #aaa;
+      font-size: 18px;
+      letter-spacing: 1px;
+    }
+
+    .category {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .section-title {
+      font-size: 24px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #fe2c55;
+      border-bottom: 2px solid rgba(254, 44, 85, 0.5);
+      padding-bottom: 8px;
+      margin-bottom: 18px;
+      display: inline-block;
+      width: 60%;
+    }
+
+    .name-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      font-size: 20px;
+      font-weight: 600;
+      width: 100%;
+    }
+
+    .name-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 0 50px;
+      color: #eaeaea;
+    }
+
+    .score {
+      color: #ffd700;
+      font-weight: 500;
+    }
+
+    .empty-notice {
+      color: #666;
+      font-size: 16px;
+      font-style: italic;
+    }
+
+    .footer-msg {
+      font-size: 30px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-top: 30px;
+      padding-bottom: 120px;
+    }
+
+    #admin-bar {
+      position: fixed;
+      bottom: 12px;
+      left: 12px;
+      z-index: 99999;
+      display: flex;
+      gap: 8px;
+      background: rgba(20, 20, 20, 0.85);
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #333;
+    }
+
+    .btn {
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .btn-reset {
+      background: #e91e63;
+    }
+
+    .btn-reset:hover {
+      background: #c2185b;
+    }
+
+    .btn-test {
+      background: #333;
+      border: 1px solid #555;
+    }
+
+    .btn-test:hover {
+      background: #444;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="admin-bar">
+    <button class="btn btn-reset" onclick="startNewStreamSession()">🔄 Start New Stream (Reset)</button>
+    <button class="btn btn-test" onclick="loadSampleData()">🎬 Test Preview</button>
+  </div>
+
+  <div id="credits-container">
+    <div>
+      <h1 class="main-title">Thanks For Watching</h1>
+      <p class="subtitle">Today's Stream Supporters</p>
+    </div>
+
+    <!-- Top Gifters (TikTok) -->
+    <div class="category">
+      <div class="section-title">Top Gifters</div>
+      <div class="name-list" id="gifters-list">
+        <p class="empty-notice">No gifts this stream</p>
+      </div>
+    </div>
+
+    <!-- Super Chats & Tips (YouTube) -->
+    <div class="category">
+      <div class="section-title">Super Chats & Tips</div>
+      <div class="name-list" id="superchat-list">
+        <p class="empty-notice">No tips recorded</p>
+      </div>
+    </div>
+
+    <!-- New Subscribers / Members -->
+    <div class="category">
+      <div class="section-title">New Subscribers & Members</div>
+      <div class="name-list" id="subs-list">
+        <p class="empty-notice">No new subscribers</p>
+      </div>
+    </div>
+
+    <!-- Top Tap Supporters (TikTok Likes) -->
+    <div class="category">
+      <div class="section-title">Top Tap Supporters</div>
+      <div class="name-list" id="likers-list">
+        <p class="empty-notice">No taps recorded</p>
+      </div>
+    </div>
+
+    <div class="footer-msg">See You Next Stream! ❤️</div>
+  </div>
+
+  <script>
+    let socket;
+
+    function connect() {
+      // Determines whether to connect via ws:// or secure wss://
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host || 'localhost:8080';
+      socket = new WebSocket(`${protocol}//${host}`);
+
+      socket.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'CREDITS_DATA') {
+          renderCredits(msg.payload);
+          restartAnimation();
+        }
+      };
+
+      socket.onclose = () => {
+        setTimeout(connect, 3000);
+      };
+    }
+
+    function renderCredits(data) {
+      // 1. Gifters
+      const giftersList = document.getElementById('gifters-list');
+      const sortedGifters = Object.entries(data.gifters || {}).sort((a, b) => b[1] - a[1]);
+      giftersList.innerHTML = sortedGifters.length > 0
+        ? sortedGifters.map(([name, count]) => `
+            <div class="name-item">
+              <span>${name}</span>
+              <span class="score">${count} gifts</span>
+            </div>`).join('')
+        : '<p class="empty-notice">No gifts this stream</p>';
+
+      // 2. Super Chats
+      const superChatList = document.getElementById('superchat-list');
+      const superChats = Object.entries(data.superChats || {});
+      superChatList.innerHTML = superChats.length > 0
+        ? superChats.map(([name, amount]) => `
+            <div class="name-item">
+              <span>${name}</span>
+              <span class="score" style="color: #00e676;">${amount}</span>
+            </div>`).join('')
+        : '<p class="empty-notice">No tips recorded</p>';
+
+      // 3. Subscribers
+      const subsList = document.getElementById('subs-list');
+      const subs = data.subscribers || [];
+      subsList.innerHTML = subs.length > 0
+        ? subs.map(name => `<div class="name-item" style="justify-content: center;">${name}</div>`).join('')
+        : '<p class="empty-notice">No new subscribers</p>';
+
+      // 4. Top Likers
+      const likersList = document.getElementById('likers-list');
+      const sortedLikers = Object.entries(data.topLikers || {}).sort((a, b) => b[1] - a[1]);
+      likersList.innerHTML = sortedLikers.length > 0
+        ? sortedLikers.slice(0, 10).map(([name, count]) => `
+            <div class="name-item">
+              <span>${name}</span>
+              <span class="score">${count.toLocaleString()} likes</span>
+            </div>`).join('')
+        : '<p class="empty-notice">No taps recorded</p>';
+    }
+
+    function restartAnimation() {
+      const container = document.getElementById('credits-container');
+      container.style.animation = 'none';
+      container.offsetHeight;
+      container.style.animation = 'rollUp 35s linear infinite';
+    }
+
+    function startNewStreamSession() {
+      if (confirm("Start a new stream? Previous stream data will be archived and stats reset.")) {
+        socket.send(JSON.stringify({ action: 'NEW_STREAM' }));
+      }
+    }
+
+    function loadSampleData() {
+      renderCredits({
+        subscribers: ['PixelWarrior', 'NightOwl99', 'Sara_Streams'],
+        gifters: {
+          'DragonSlayer': 250,
+          'AcePilot': 110,
+          'Speedy22': 45
+        },
+        superChats: {
+          'CaptainGamer': '$20.00',
+          'Vortex': '$5.00'
+        },
+        topLikers: {
+          'ClickMaster': 3420,
+          'TapQueen': 1900,
+          'Shadow': 850
+        }
+      });
+      restartAnimation();
+    }
+
+    connect();
+  </script>
+</body>
+</html>

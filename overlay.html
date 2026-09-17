@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Notification feed */
+    #alert-box {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .card {
+      background: rgba(18, 18, 18, 0.85);
+      border-left: 6px solid #fe2c55;
+      color: white;
+      padding: 12px 18px;
+      border-radius: 6px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+      animation: slideIn 0.4s ease-out;
+      min-width: 250px;
+    }
+
+    .user {
+      font-weight: bold;
+      color: #25f4ee;
+      font-size: 16px;
+    }
+
+    .detail {
+      font-size: 14px;
+      color: #e0e0e0;
+      margin-top: 2px;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(-100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Test buttons dock */
+    #test-panel {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(30, 30, 30, 0.8);
+      padding: 10px 14px;
+      border-radius: 8px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      z-index: 9999;
+    }
+
+    #test-panel span {
+      color: #aaa;
+      font-size: 12px;
+      margin-right: 4px;
+    }
+
+    button {
+      background: #333;
+      color: white;
+      border: 1px solid #555;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    button:hover {
+      background: #444;
+      border-color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div id="alert-box"></div>
+
+  <!-- Testing buttons (Visible in browser, easy to click) -->
+  <div id="test-panel">
+    <span>Test Panel:</span>
+    <button onclick="triggerAlert('GamerGuy99', 'Gift', 'Rose (x10)')">🎁 Test Gift</button>
+    <button onclick="triggerAlert('SaraStream', 'Likes', 'sent 150 likes!')">❤️ Test Likes</button>
+    <button onclick="triggerAlert('Alex_Live', 'New Subscriber', 'Subscribed to the stream!')">⭐ Test Sub</button>
+  </div>
+
+  <script>
+    const container = document.getElementById('alert-box');
+
+    // Central function to show an alert card
+    function triggerAlert(user, type, detail) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="user">${user}</div>
+        <div class="detail">${type}: ${detail}</div>
+      `;
+
+      container.prepend(card);
+
+      // Remove after 5 seconds
+      setTimeout(() => {
+        card.style.opacity = '0';
+        card.style.transition = 'opacity 0.5s';
+        setTimeout(() => card.remove(), 500);
+      }, 5000);
+    }
+
+    // Connect to WebSocket server if running
+    try {
+      const socket = new WebSocket('ws://localhost:8080');
+      socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        triggerAlert(data.user, data.type, data.detail);
+      };
+    } catch (e) {
+      console.log("WebSocket offline — test buttons still work!");
+    }
+  </script>
+</body>
+</html>
